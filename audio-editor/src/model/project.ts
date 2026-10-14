@@ -20,3 +20,5 @@ export function createAudioData(id: string, channels: Float32Array[], sampleRate
     refCount: 0, waveform: null, missing: false,
   }
 }
+/** Samples per waveform point (A2 Algorithm 2, w). */
+export const WAVEFORM_WINDOW = 512
