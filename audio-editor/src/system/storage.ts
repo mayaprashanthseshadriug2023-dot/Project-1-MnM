@@ -69,6 +69,12 @@ export function parseProjectFile(text: string): Result<ProjectFile> {
   }
   return ok(f)
 }
+/** Clip paths may be relative to the project file (as in the sample projects), so they work on any computer. */
+export function resolvePath(projectPath: string, file: string): string {
+  if (file.startsWith('/') || /^[A-Za-z]:[\\/]/.test(file)) return file          // already absolute
+  const cut = Math.max(projectPath.lastIndexOf('/'), projectPath.lastIndexOf('\\'))
+  return cut === -1 ? file : projectPath.slice(0, cut + 1) + file
+}
 
 export async function loadProject(
   path: string, fs: FileSystem, io: AudioIO, waveform: GenerateWaveform,
@@ -79,6 +85,7 @@ export async function loadProject(
   const parsed = parseProjectFile(new TextDecoder().decode(read.value))
   if (!parsed.ok) return parsed
   const file = parsed.value
+  for (const t of file.tracks) for (const c of t.clips) c.file = resolvePath(path, c.file)
 
   // 2. Decode each distinct audio file once; missing files become placeholders (ER3)
   const project = createProject(file.sampleRate)

@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "sampleRate": 44100,
+  "tracks": [
+    {
+      "name": "Drums",
+      "volume": 1,
+      "mute": false,
+      "solo": false,
+      "clips": [
+        {
+          "file": "audio/kick.wav",
+          "offset": 0,
+          "duration": 22050,
+          "start": 0,
+          "fadeIn": 0,
+          "fadeOut": 0
+        },
+        {
+          "file": "audio/kick.wav",
+          "offset": 0,
+          "duration": 22050,
+          "start": 44100,
+          "fadeIn": 0,
+          "fadeOut": 0
+        },
+        {
+          "file": "audio/kick.wav",
+          "offset": 0,
+          "duration": 22050,
+          "start": 88200,
+          "fadeIn": 0,
+          "fadeOut": 0
+        },
+        {
+          "file": "audio/kick.wav",
+          "offset": 0,
+          "duration": 22050,
+          "start": 132300,
+          "fadeIn": 0,
+          "fadeOut": 0
+        },
+        {
+          "file": "audio/kick.wav",
+          "offset": 0,
+          "duration": 22050,
+          "start": 176400,
+          "fadeIn": 0,
+          "fadeOut": 0
+        },
+        {
+          "file": "audio/kick.wav",
+          "offset": 0,
+          "duration": 22050,
+          "start": 220500,
+          "fadeIn": 0,
+          "fadeOut": 0
+        },
+        {
+          "file": "audio/kick.wav",
+          "offset": 0,
+          "duration": 22050,
+          "start": 264600,
+          "fadeIn": 0,
+          "fadeOut": 0
+        },
+        {
+          "file": "audio/kick.wav",
+          "offset": 0,
+          "duration": 22050,
+          "start": 308700,
+          "fadeIn": 0,
+          "fadeOut": 0
+        }
+      ]
+    },
+    {
+      "name": "Bass",
+      "volume": 1,
+      "mute": false,
+      "solo": false,
+      "clips": [
+        {
+          "file": "audio/bass.wav",
+          "offset": 0,
+          "duration": 88200,
+          "start": 0,
+          "fadeIn": 0,
+          "fadeOut": 0
+        },
+        {
+          "file": "audio/bass.wav",
+          "offset": 88200,
+          "duration": 88200,
+          "start": 176400,
+          "fadeIn": 0,
+          "fadeOut": 0
+        }
+      ]
+    },
+    {
+      "name": "Lead",
+      "volume": 1,
+      "mute": true,
+      "solo": false,
+      "clips": [
+        {
+          "file": "audio/tone-440.wav",
+          "offset": 0,
+          "duration": 88200,
+          "start": 88200,
+          "fadeIn": 22050,
+          "fadeOut": 22050
+        }
+      ]
+    }
+  ]
+}

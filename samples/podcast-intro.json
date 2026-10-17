@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "sampleRate": 44100,
+  "tracks": [
+    {
+      "name": "Voice",
+      "volume": 1,
+      "mute": false,
+      "solo": false,
+      "clips": [
+        {
+          "file": "audio/narration.wav",
+          "offset": 0,
+          "duration": 352800,
+          "start": 66150,
+          "fadeIn": 0,
+          "fadeOut": 0
+        }
+      ]
+    },
+    {
+      "name": "Music",
+      "volume": 0.5,
+      "mute": false,
+      "solo": false,
+      "clips": [
+        {
+          "file": "audio/music-bed.wav",
+          "offset": 0,
+          "duration": 441000,
+          "start": 0,
+          "fadeIn": 44100,
+          "fadeOut": 88200
+        }
+      ]
+    },
+    {
+      "name": "Effects",
+      "volume": 1,
+      "mute": false,
+      "solo": false,
+      "clips": [
+        {
+          "file": "audio/kick.wav",
+          "offset": 0,
+          "duration": 22050,
+          "start": 22050,
+          "fadeIn": 0,
+          "fadeOut": 0
+        },
+        {
+          "file": "audio/kick.wav",
+          "offset": 0,
+          "duration": 22050,
+          "start": 418950,
+          "fadeIn": 0,
+          "fadeOut": 0
+        }
+      ]
+    }
+  ]
+}
