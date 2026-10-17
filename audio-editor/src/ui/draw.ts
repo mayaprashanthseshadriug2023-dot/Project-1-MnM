@@ -103,7 +103,8 @@ function drawClip(ctx: CanvasRenderingContext2D, project: Project, clip: Clip, v
   ctx.fillStyle = C.label
   ctx.font = '12px system-ui'
   ctx.textBaseline = 'top'
-  const name = missing ? `${clip.bufferId} (missing)` : clip.bufferId
+  const fileName = clip.bufferId.split(/[\\/]/).pop() ?? clip.bufferId   // on the desktop, ids are full paths
+  const name = missing ? `${fileName} (missing)` : fileName
   ctx.fillText(name, Math.max(x, 0) + 10, y + 8, Math.max(0, w - 20))
 
   // Fade handles: small yellow squares to drag
