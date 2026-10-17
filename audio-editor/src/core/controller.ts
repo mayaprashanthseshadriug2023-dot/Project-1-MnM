@@ -4,7 +4,7 @@ import type { AudioIO, FileSystem, GenerateWaveform, PlaybackEngine, RenderMix }
 import type { Clip, Project, Result, Samples, Track } from '../model/types'
 import { ok, err, clipEnd } from '../model/types'
 import { createClip, createProject, createTrack, WAVEFORM_WINDOW } from '../model/project'
-import { placeClip, trimLeft, trimRight, splitClip, removeClip } from '../algorithms/timeline'
+import { canPlace, placeClip, trimLeft, trimRight, splitClip, removeClip } from '../algorithms/timeline'
 import { loadProject, saveProject } from '../system/storage'
 import { exportWav } from './export'
 
@@ -85,7 +85,7 @@ export class ProjectController {
       if (!decoded.ok || decoded.value.length === 0) return err('Unsupported or corrupted file')
       buf = decoded.value
       buf.refCount = 0
-      buf.waveform = this.deps.waveform(buf, WAVEFORM_WINDOW)
+      buf.waveform = await this.deps.waveform(buf, WAVEFORM_WINDOW)
     }
 
     // New clip goes after the last clip on the track (A2 Algorithm 1)
@@ -116,7 +116,13 @@ export class ProjectController {
     source.clips.splice(index, 1)                            // then leave the old one
     return this.done(placed)
   }
-
+    /** For the drag preview: would this move be accepted? Changes nothing. */
+  canMove(clipId: string, toTrackId: string, start: Samples): boolean {
+    const found = this.findClip(clipId)
+    const target = this.findTrack(toTrackId)
+    return !!found && !!target && canPlace(target, found.clip, start)
+  }
+  
   trimClip(clipId: string, edge: 'left' | 'right', delta: Samples): Result {
     const found = this.findClip(clipId)
     if (!found) return err('Clip not found')
@@ -170,6 +176,14 @@ export class ProjectController {
     if (this.deps.playback.isPlaying()) this.play()          // restart from the new position
   }
 
+    /** Where the cursor is now: from the audio clock while playing (A2 Alg. 5), otherwise the saved cursor. */
+  position(): Samples {
+    return this.deps.playback.isPlaying() ? this.deps.playback.position() : this.project.cursor
+  }
+
+  isPlaying(): boolean {
+    return this.deps.playback.isPlaying()
+  }
   // ---------- Save, load, export (UC4, ER3, ER4) ----------
 
   async save(path: string): Promise<Result> {
@@ -178,6 +192,31 @@ export class ProjectController {
     return result
   }
 
+    /** Relink a missing audio file (ER3): its clips now play from `newPath`. */
+  async relink(missingPath: string, newPath: string): Promise<Result> {
+    const old = this.project.buffers.get(missingPath)
+    if (!old?.missing) return err('That file is not missing')
+    if (newPath !== missingPath && this.project.buffers.has(newPath)) return err('That file is already in the project')
+
+    const bytes = await this.deps.fs.readFile(newPath)
+    if (!bytes.ok) return err(`Could not read ${newPath}`)
+    const decoded = await this.deps.io.decode(newPath, bytes.value, this.project.sampleRate)
+    if (!decoded.ok) return err('Unsupported or corrupted file')
+    const buf = decoded.value
+
+    const clips = this.project.tracks.flatMap(t => t.clips).filter(c => c.bufferId === missingPath)
+    if (clips.some(c => c.offset + c.duration > buf.length))
+      return err('That file is shorter than the clips that use it')   // would break invariant 2
+
+    buf.waveform = await this.deps.waveform(buf, WAVEFORM_WINDOW)
+    buf.refCount = clips.length
+    for (const c of clips) c.bufferId = newPath
+    this.project.buffers.delete(missingPath)
+    this.project.buffers.set(newPath, buf)
+    this.dirty = true
+    return ok(undefined)
+  }
+  
   /** Returns the list of missing audio files, so the UI can offer to relink them. */
   async load(path: string): Promise<Result<string[]>> {
     const result = await loadProject(path, this.deps.fs, this.deps.io, this.deps.waveform)
