@@ -44,3 +44,15 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   display: flex; gap: 16px; padding: 6px 12px; background: var(--panel);
   border-top: 1px solid var(--line); color: var(--muted); font-size: 13px;
 }
+
+.zoom-label { color: var(--muted); font-size: 13px; }
+.editor { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.editor-body { flex: 1; display: flex; align-items: flex-start; overflow-y: auto; }
+.headers { width: 220px; flex-shrink: 0; }
+.ruler-corner { height: 28px; background: var(--panel); border-right: 1px solid var(--line); }
+.headers .track-header { height: 72px; border-bottom: 1px solid var(--line); }
+.timeline { flex: 1; position: relative; min-width: 0; }
+.timeline canvas { display: block; }
+.cursor { position: absolute; top: 0; left: 0; width: 2px; background: var(--danger); pointer-events: none; }
+.hscroll { margin-left: 220px; overflow-x: scroll; overflow-y: hidden; height: 14px; }
+.hscroll > div { height: 1px; }

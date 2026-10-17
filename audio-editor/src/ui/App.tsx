@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { ProjectController } from '../core/controller'
 import type { Result } from '../model/types'
 import { TrackHeader } from './TrackHeader'
+import { Timeline } from './Timeline'
 import { formatTime } from './format'
+import { projectEnd } from './geometry'
 
 interface Props {
   controller: ProjectController                    // the UI's only way to change anything (A2 Section 4)
@@ -10,13 +12,18 @@ interface Props {
 }
 
 export function App({ controller, registerFile }: Props) {
-  const [, setVersion] = useState(0)
+  const [version, setVersion] = useState(0)
   const refresh = () => setVersion(v => v + 1)     // redraw after the controller changes the project
   const [status, setStatus] = useState('Add a track, then import an audio file')
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
   const [time, setTime] = useState(0)
+  const [pps, setPps] = useState(100)              // zoom: pixels per second
+  const [scrollX, setScrollX] = useState(0)
   const fileInput = useRef<HTMLInputElement>(null)
+  const hscroll = useRef<HTMLDivElement>(null)
   const project = controller.project
+  const view = { pps, scrollX, sampleRate: project.sampleRate }
+  const contentWidth = (projectEnd(project) / project.sampleRate + 30) * pps   // 30 s of room after the last clip
 
   /** Shows a command's error in the status bar (or a success message), then redraws. */
   function run(result: Result<unknown>, success?: string) {
@@ -25,7 +32,7 @@ export function App({ controller, registerFile }: Props) {
     refresh()
   }
 
-  // Move the time display during playback, at most once per frame (A3 3.4)
+  // Move the time display and cursor during playback, at most once per frame (A3 3.4)
   useEffect(() => {
     let frame = 0
     const loop = () => { setTime(controller.position()); frame = requestAnimationFrame(loop) }
@@ -51,11 +58,12 @@ export function App({ controller, registerFile }: Props) {
       setStatus(`Loading ${file.name}…`)           // feedback while decoding (A3 4.4)
       const path = await registerFile(file)
       const result = await controller.importAudio(path, trackId)
-      // Error messages name the file (A3 4.5)
-      setStatus(result.ok ? `Imported ${file.name}` : `${file.name}: ${result.error}`)
+      setStatus(result.ok ? `Imported ${file.name}` : `${file.name}: ${result.error}`)   // names the file (A3 4.5)
       refresh()
     }
   }
+
+  const zoom = (factor: number) => setPps(p => Math.min(2000, Math.max(5, p * factor)))
 
   return (
     <div className="app">
@@ -68,26 +76,39 @@ export function App({ controller, registerFile }: Props) {
         <button onClick={() => { controller.play(); refresh() }} disabled={controller.isPlaying()}>Play</button>
         <button onClick={() => { controller.pause(); refresh() }}>Pause</button>
         <button onClick={() => { controller.stop(); refresh() }}>Stop</button>
+        <span className="divider" />
+        <button onClick={() => zoom(1 / 1.5)} title="Zoom out" aria-label="Zoom out">−</button>
+        <span className="zoom-label">Zoom</span>
+        <button onClick={() => zoom(1.5)} title="Zoom in" aria-label="Zoom in">+</button>
         <span className="time" aria-label="Cursor time">{formatTime(time, project.sampleRate)}</span>
       </header>
 
-      <main className="tracks">
-        {project.tracks.length === 0 && <p className="empty">No tracks yet. Click “+ Track” to start.</p>}
-        {project.tracks.map(track => (
-          <div className="track-row" key={track.id}>
-            <TrackHeader track={track} selected={track.id === selectedTrack}
-              onSelect={() => setSelectedTrack(track.id)}
-              onChange={settings => run(controller.setTrack(track.id, settings))} />
-            <div className="track-clips">
-              {track.clips.map(c => (
-                <span className="clip-chip" key={c.id}>
-                  {c.bufferId} · {formatTime(c.start, project.sampleRate)}–{formatTime(c.start + c.duration, project.sampleRate)}
-                </span>
+      {project.tracks.length === 0 ? (
+        <p className="empty">No tracks yet. Click “+ Track” to start.</p>
+      ) : (
+        <main className="editor">
+          <div className="editor-body"
+            onWheel={e => {                                      // trackpad swipe or Shift+wheel scrolls sideways
+              const dx = e.shiftKey ? e.deltaY : e.deltaX
+              if (dx && hscroll.current) hscroll.current.scrollLeft += dx
+            }}>
+            <div className="headers">
+              <div className="ruler-corner" />
+              {project.tracks.map(track => (
+                <TrackHeader key={track.id} track={track} selected={track.id === selectedTrack}
+                  onSelect={() => setSelectedTrack(track.id)}
+                  onChange={settings => run(controller.setTrack(track.id, settings))} />
               ))}
             </div>
+            <Timeline project={project} version={version} view={view} cursor={time}
+              onSeek={s => { controller.seek(s); refresh() }}
+              onSelectTrack={i => setSelectedTrack(project.tracks[i].id)} />
           </div>
-        ))}
-      </main>
+          <div className="hscroll" ref={hscroll} onScroll={e => setScrollX(e.currentTarget.scrollLeft)}>
+            <div style={{ width: contentWidth }} />
+          </div>
+        </main>
+      )}
 
       <footer className="status-bar">
         <span>{project.sampleRate / 1000} kHz</span>
