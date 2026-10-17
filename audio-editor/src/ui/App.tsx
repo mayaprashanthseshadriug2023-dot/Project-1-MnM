@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ProjectController } from '../core/controller'
 import type { Result } from '../model/types'
 import { TrackHeader } from './TrackHeader'
-import { Timeline } from './Timeline'
+import { Timeline, type Edit } from './Timeline'
 import { formatTime } from './format'
 import { projectEnd } from './geometry'
 
@@ -11,25 +11,41 @@ interface Props {
   registerFile: (file: File) => Promise<string>    // hands a picked file to the system layer, returns its path
 }
 
+const HELP = 'Drag clips to move · drag edges to trim · drag yellow squares for fades · S split · Delete remove · Space play'
+
 export function App({ controller, registerFile }: Props) {
   const [version, setVersion] = useState(0)
   const refresh = () => setVersion(v => v + 1)     // redraw after the controller changes the project
   const [status, setStatus] = useState('Add a track, then import an audio file')
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null)
+  const [selectedClip, setSelectedClip] = useState<string | null>(null)
   const [time, setTime] = useState(0)
   const [pps, setPps] = useState(100)              // zoom: pixels per second
   const [scrollX, setScrollX] = useState(0)
   const fileInput = useRef<HTMLInputElement>(null)
   const hscroll = useRef<HTMLDivElement>(null)
   const project = controller.project
-  const view = { pps, scrollX, sampleRate: project.sampleRate }
-  const contentWidth = (projectEnd(project) / project.sampleRate + 30) * pps   // 30 s of room after the last clip
+  const sr = project.sampleRate
+  const view = { pps, scrollX, sampleRate: sr }
+  const contentWidth = (projectEnd(project) / sr + 30) * pps   // 30 s of room after the last clip
 
   /** Shows a command's error in the status bar (or a success message), then redraws. */
   function run(result: Result<unknown>, success?: string) {
     if (!result.ok) setStatus(result.error)
     else if (success) setStatus(success)
     refresh()
+  }
+
+  /** After an edit during playback, restart from the current position so the change is heard at once. */
+  function afterEdit() {
+    if (controller.isPlaying()) controller.seek(controller.position())
+  }
+
+  function applyEdit(edit: Edit) {
+    if (edit.kind === 'move') run(controller.moveClip(edit.clipId, edit.trackId, edit.start), `Clip moved to ${formatTime(edit.start, sr)}`)
+    else if (edit.kind === 'trim') run(controller.trimClip(edit.clipId, edit.edge, edit.delta), 'Clip trimmed')
+    else run(controller.setFades(edit.clipId, edit.fadeIn, edit.fadeOut), 'Fades updated')
+    afterEdit()
   }
 
   // Move the time display and cursor during playback, at most once per frame (A3 3.4)
@@ -45,9 +61,35 @@ export function App({ controller, registerFile }: Props) {
     document.title = `${controller.dirty ? '* ' : ''}Multi-Track Audio Editor`
   })
 
+  // Keyboard shortcuts (A3 4.2): Space play/pause, S split, Delete remove
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement) return          // leave keys alone in the volume sliders
+      if (e.code === 'Space') {
+        e.preventDefault()
+        if (controller.isPlaying()) controller.pause()
+        else controller.play()
+        refresh()
+      } else if (e.key === 's' || e.key === 'S') {
+        if (!selectedClip) { setStatus('Select a clip to split'); return }
+        run(controller.splitClipAt(selectedClip, controller.position()), 'Clip split at the cursor')
+        setSelectedClip(null)
+        afterEdit()
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (!selectedClip) return
+        run(controller.deleteClip(selectedClip), 'Clip removed')
+        setSelectedClip(null)
+        afterEdit()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   function addTrack() {
     const track = controller.addTrack(`Track ${project.tracks.length + 1}`)
     setSelectedTrack(track.id)
+    setStatus(HELP)
     refresh()
   }
 
@@ -58,7 +100,7 @@ export function App({ controller, registerFile }: Props) {
       setStatus(`Loading ${file.name}…`)           // feedback while decoding (A3 4.4)
       const path = await registerFile(file)
       const result = await controller.importAudio(path, trackId)
-      setStatus(result.ok ? `Imported ${file.name}` : `${file.name}: ${result.error}`)   // names the file (A3 4.5)
+      setStatus(result.ok ? `Imported ${file.name}. ${HELP}` : `${file.name}: ${result.error}`)   // names the file (A3 4.5)
       refresh()
     }
   }
@@ -80,7 +122,7 @@ export function App({ controller, registerFile }: Props) {
         <button onClick={() => zoom(1 / 1.5)} title="Zoom out" aria-label="Zoom out">−</button>
         <span className="zoom-label">Zoom</span>
         <button onClick={() => zoom(1.5)} title="Zoom in" aria-label="Zoom in">+</button>
-        <span className="time" aria-label="Cursor time">{formatTime(time, project.sampleRate)}</span>
+        <span className="time" aria-label="Cursor time">{formatTime(time, sr)}</span>
       </header>
 
       {project.tracks.length === 0 ? (
@@ -101,8 +143,11 @@ export function App({ controller, registerFile }: Props) {
               ))}
             </div>
             <Timeline project={project} version={version} view={view} cursor={time}
+              selectedClip={selectedClip} onSelectClip={setSelectedClip}
+              onSelectTrack={i => setSelectedTrack(project.tracks[i].id)}
               onSeek={s => { controller.seek(s); refresh() }}
-              onSelectTrack={i => setSelectedTrack(project.tracks[i].id)} />
+              onEdit={applyEdit}
+              canMove={(id, trackId, start) => controller.canMove(id, trackId, start)} />
           </div>
           <div className="hscroll" ref={hscroll} onScroll={e => setScrollX(e.currentTarget.scrollLeft)}>
             <div style={{ width: contentWidth }} />
@@ -111,7 +156,7 @@ export function App({ controller, registerFile }: Props) {
       )}
 
       <footer className="status-bar">
-        <span>{project.sampleRate / 1000} kHz</span>
+        <span>{sr / 1000} kHz</span>
         <span role="status">{status}</span>
       </footer>
     </div>

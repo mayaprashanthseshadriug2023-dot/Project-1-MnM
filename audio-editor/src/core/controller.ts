@@ -4,7 +4,7 @@ import type { AudioIO, FileSystem, GenerateWaveform, PlaybackEngine, RenderMix }
 import type { Clip, Project, Result, Samples, Track } from '../model/types'
 import { ok, err, clipEnd } from '../model/types'
 import { createClip, createProject, createTrack, WAVEFORM_WINDOW } from '../model/project'
-import { placeClip, trimLeft, trimRight, splitClip, removeClip } from '../algorithms/timeline'
+import { canPlace, placeClip, trimLeft, trimRight, splitClip, removeClip } from '../algorithms/timeline'
 import { loadProject, saveProject } from '../system/storage'
 import { exportWav } from './export'
 
@@ -116,7 +116,13 @@ export class ProjectController {
     source.clips.splice(index, 1)                            // then leave the old one
     return this.done(placed)
   }
-
+    /** For the drag preview: would this move be accepted? Changes nothing. */
+  canMove(clipId: string, toTrackId: string, start: Samples): boolean {
+    const found = this.findClip(clipId)
+    const target = this.findTrack(toTrackId)
+    return !!found && !!target && canPlace(target, found.clip, start)
+  }
+  
   trimClip(clipId: string, edge: 'left' | 'right', delta: Samples): Result {
     const found = this.findClip(clipId)
     if (!found) return err('Clip not found')

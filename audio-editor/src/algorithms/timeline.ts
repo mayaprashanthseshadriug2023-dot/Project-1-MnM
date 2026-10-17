@@ -17,13 +17,9 @@ export function lowerBound(clips: Clip[], s: Samples): number {
 
 // ---------- Algorithm 3: placement ----------
 
-/**
- * Place clip c on track at start s, or reject with the track unchanged (FR2, ER2).
- * c may already be on the track (a move) or be new (an import).
- */
-export function placeClip(track: Track, c: Clip, s: Samples): Result {
-  if (!Number.isInteger(s) || s < 0) return err('Clip cannot start before 0')
-
+/** The overlap check of Algorithm 3, without changing anything. Also used for the red drag preview. */
+export function canPlace(track: Track, c: Clip, s: Samples): boolean {
+  if (!Number.isInteger(s) || s < 0) return false
   const clips = track.clips
   const i = lowerBound(clips, s)
 
@@ -36,10 +32,19 @@ export function placeClip(track: Track, c: Clip, s: Samples): Result {
   const next = clips[n]
 
   // Only the two neighbours can overlap, because clips are sorted and non-overlapping
-  if ((prev && clipEnd(prev) > s) || (next && s + c.duration > next.start))
-    return err('Clip overlaps another clip')
+  return !((prev && clipEnd(prev) > s) || (next && s + c.duration > next.start))
+}
+
+/**
+ * Place clip c on track at start s, or reject with the track unchanged (FR2, ER2).
+ * c may already be on the track (a move) or be new (an import).
+ */
+export function placeClip(track: Track, c: Clip, s: Samples): Result {
+  if (!Number.isInteger(s) || s < 0) return err('Clip cannot start before 0')
+  if (!canPlace(track, c, s)) return err('Clip overlaps another clip')
 
   // All checks passed: now change the track
+  const clips = track.clips
   const old = clips.indexOf(c)
   if (old !== -1) clips.splice(old, 1)
   c.start = s
