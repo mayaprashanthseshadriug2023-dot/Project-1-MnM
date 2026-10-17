@@ -7,13 +7,15 @@ import { createAudioIO } from './system/audio-io'
 import { createBrowserFs } from './system/browser-fs'
 import { renderMix } from './system/mixer'
 import { createWebAudioOutput } from './system/web-audio-output'
+import { createWorkerWaveform } from './system/worker-waveform'
 
 export function createApp() {
   const fs = createBrowserFs()
   const controller = new ProjectController({
     fs,
     io: createAudioIO(),
-    waveform: generateWaveform,
+    // Waveforms on a separate thread when the browser supports it (A3 3.4), otherwise directly
+    waveform: typeof Worker !== 'undefined' ? createWorkerWaveform() : generateWaveform,
     playback: new Playback(createWebAudioOutput()),
     renderMix,
   })

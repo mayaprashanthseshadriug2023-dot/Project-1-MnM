@@ -86,7 +86,7 @@ export async function loadProject(
   const paths = new Set(file.tracks.flatMap(t => t.clips.map(c => c.file)))
   for (const p of paths) {
     const buf = await loadAudio(p, fs, io, file.sampleRate)
-    if (buf) buf.waveform = waveform(buf, WAVEFORM_WINDOW)
+    if (buf) buf.waveform = await waveform(buf, WAVEFORM_WINDOW)
     else missing.push(p)
     project.buffers.set(p, buf ?? placeholder(p, file.sampleRate))
   }

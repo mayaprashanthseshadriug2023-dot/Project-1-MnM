@@ -23,7 +23,7 @@ export interface AudioIO {
 }
 
 /** Waveform Analysis (Algorithm 2). */
-export type GenerateWaveform = (buf: AudioData, windowSize: Samples) => WaveformCache
+export type GenerateWaveform = (buf: AudioData, windowSize: Samples) => WaveformCache | Promise<WaveformCache>
 
 /** Playback Engine (Algorithm 5). */
 export interface PlaybackEngine {

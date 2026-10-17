@@ -85,7 +85,7 @@ export class ProjectController {
       if (!decoded.ok || decoded.value.length === 0) return err('Unsupported or corrupted file')
       buf = decoded.value
       buf.refCount = 0
-      buf.waveform = this.deps.waveform(buf, WAVEFORM_WINDOW)
+      buf.waveform = await this.deps.waveform(buf, WAVEFORM_WINDOW)
     }
 
     // New clip goes after the last clip on the track (A2 Algorithm 1)
@@ -208,7 +208,7 @@ export class ProjectController {
     if (clips.some(c => c.offset + c.duration > buf.length))
       return err('That file is shorter than the clips that use it')   // would break invariant 2
 
-    buf.waveform = this.deps.waveform(buf, WAVEFORM_WINDOW)
+    buf.waveform = await this.deps.waveform(buf, WAVEFORM_WINDOW)
     buf.refCount = clips.length
     for (const c of clips) c.bufferId = newPath
     this.project.buffers.delete(missingPath)
