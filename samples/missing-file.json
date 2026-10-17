@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "sampleRate": 44100,
+  "tracks": [
+    {
+      "name": "Voice",
+      "volume": 1,
+      "mute": false,
+      "solo": false,
+      "clips": [
+        {
+          "file": "audio/narration.wav",
+          "offset": 0,
+          "duration": 352800,
+          "start": 0,
+          "fadeIn": 0,
+          "fadeOut": 0
+        },
+        {
+          "file": "audio/deleted-take.wav",
+          "offset": 0,
+          "duration": 132300,
+          "start": 396900,
+          "fadeIn": 0,
+          "fadeOut": 0
+        }
+      ]
+    }
+  ]
+}
