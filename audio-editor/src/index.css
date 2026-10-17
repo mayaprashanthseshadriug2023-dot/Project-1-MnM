@@ -56,3 +56,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .cursor { position: absolute; top: 0; left: 0; width: 2px; background: var(--danger); pointer-events: none; }
 .hscroll { margin-left: 220px; overflow-x: scroll; overflow-y: hidden; height: 14px; }
 .hscroll > div { height: 1px; }
+
+.missing-banner {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 8px 12px;
+  background: #3a2a14; border-bottom: 1px solid var(--solo); color: var(--solo);
+}
+.missing-item { display: flex; gap: 6px; align-items: center; color: var(--text); }
+.missing-item button { padding: 2px 8px; }

@@ -192,6 +192,31 @@ export class ProjectController {
     return result
   }
 
+    /** Relink a missing audio file (ER3): its clips now play from `newPath`. */
+  async relink(missingPath: string, newPath: string): Promise<Result> {
+    const old = this.project.buffers.get(missingPath)
+    if (!old?.missing) return err('That file is not missing')
+    if (newPath !== missingPath && this.project.buffers.has(newPath)) return err('That file is already in the project')
+
+    const bytes = await this.deps.fs.readFile(newPath)
+    if (!bytes.ok) return err(`Could not read ${newPath}`)
+    const decoded = await this.deps.io.decode(newPath, bytes.value, this.project.sampleRate)
+    if (!decoded.ok) return err('Unsupported or corrupted file')
+    const buf = decoded.value
+
+    const clips = this.project.tracks.flatMap(t => t.clips).filter(c => c.bufferId === missingPath)
+    if (clips.some(c => c.offset + c.duration > buf.length))
+      return err('That file is shorter than the clips that use it')   // would break invariant 2
+
+    buf.waveform = this.deps.waveform(buf, WAVEFORM_WINDOW)
+    buf.refCount = clips.length
+    for (const c of clips) c.bufferId = newPath
+    this.project.buffers.delete(missingPath)
+    this.project.buffers.set(newPath, buf)
+    this.dirty = true
+    return ok(undefined)
+  }
+  
   /** Returns the list of missing audio files, so the UI can offer to relink them. */
   async load(path: string): Promise<Result<string[]>> {
     const result = await loadProject(path, this.deps.fs, this.deps.io, this.deps.waveform)

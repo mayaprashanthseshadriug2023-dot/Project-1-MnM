@@ -12,6 +12,7 @@ interface Props {
 }
 
 const HELP = 'Drag clips to move · drag edges to trim · drag yellow squares for fades · S split · Delete remove · Space play'
+const LARGE_FILE_MB = 50                           // warn before importing files this big (A3 3.5)
 
 export function App({ controller, registerFile }: Props) {
   const [version, setVersion] = useState(0)
@@ -22,12 +23,18 @@ export function App({ controller, registerFile }: Props) {
   const [time, setTime] = useState(0)
   const [pps, setPps] = useState(100)              // zoom: pixels per second
   const [scrollX, setScrollX] = useState(0)
-  const fileInput = useRef<HTMLInputElement>(null)
+  const [projectName, setProjectName] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)          // true while exporting
+  const importInput = useRef<HTMLInputElement>(null)
+  const openInput = useRef<HTMLInputElement>(null)
+  const relinkInput = useRef<HTMLInputElement>(null)
+  const relinkTarget = useRef<string | null>(null)
   const hscroll = useRef<HTMLDivElement>(null)
   const project = controller.project
   const sr = project.sampleRate
   const view = { pps, scrollX, sampleRate: sr }
   const contentWidth = (projectEnd(project) / sr + 30) * pps   // 30 s of room after the last clip
+  const missing = [...project.buffers.values()].filter(b => b.missing).map(b => b.id)
 
   /** Shows a command's error in the status bar (or a success message), then redraws. */
   function run(result: Result<unknown>, success?: string) {
@@ -58,8 +65,15 @@ export function App({ controller, registerFile }: Props) {
 
   // Window title shows * while there are unsaved changes (A3 4.4)
   useEffect(() => {
-    document.title = `${controller.dirty ? '* ' : ''}Multi-Track Audio Editor`
+    document.title = `${controller.dirty ? '* ' : ''}${projectName ?? 'Untitled'} – Multi-Track Audio Editor`
   })
+
+  // Closing the page with unsaved changes asks first (A3 4.5)
+  useEffect(() => {
+    const warn = (e: BeforeUnloadEvent) => { if (controller.dirty) e.preventDefault() }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [controller])
 
   // Keyboard shortcuts (A3 4.2): Space play/pause, S split, Delete remove
   useEffect(() => {
@@ -97,6 +111,10 @@ export function App({ controller, registerFile }: Props) {
     const trackId = selectedTrack ?? project.tracks[0]?.id
     if (!trackId) { setStatus('Add a track first'); return }
     for (const file of Array.from(files ?? [])) {
+      const mb = file.size / 1024 / 1024
+      if (mb > LARGE_FILE_MB &&
+          !window.confirm(`${file.name} is large (${Math.round(mb)} MB) and may use a lot of memory. Import anyway?`))
+        continue                                    // memory warning for very large imports (A3 3.5)
       setStatus(`Loading ${file.name}…`)           // feedback while decoding (A3 4.4)
       const path = await registerFile(file)
       const result = await controller.importAudio(path, trackId)
@@ -105,28 +123,88 @@ export function App({ controller, registerFile }: Props) {
     }
   }
 
+  // ---------- Save, Open, Export (UC4, ER3, ER4) ----------
+
+  async function save() {
+    const name = projectName ?? window.prompt('Project name', 'my-project')?.trim()
+    if (!name) return
+    setProjectName(name)
+    const result = await controller.save(`${name}.json`)
+    run(result, `Saved ${name}.json`)
+  }
+
+  async function open(file: File | undefined) {
+    if (!file) return
+    if (controller.dirty && !window.confirm('You have unsaved changes. Open another project anyway?')) return
+    const result = await controller.load(await registerFile(file))
+    if (!result.ok) { setStatus(`${file.name}: ${result.error}`); return }   // current project is untouched
+    setProjectName(file.name.replace(/\.json$/i, ''))
+    setSelectedClip(null)
+    setSelectedTrack(controller.project.tracks[0]?.id ?? null)
+    const gone = result.value
+    setStatus(gone.length ? `Opened ${file.name}. ${gone.length} audio file(s) missing: use Relink` : `Opened ${file.name}`)
+    refresh()
+  }
+
+  async function relink(file: File | undefined) {
+    const target = relinkTarget.current
+    if (!file || !target) return
+    const result = await controller.relink(target, await registerFile(file))
+    run(result, `Relinked ${target} to ${file.name}`)
+  }
+
+  async function exportMix() {
+    const name = projectName ?? 'mix'
+    setBusy(true)
+    setStatus('Exporting…')
+    const result = await controller.exportWav(`${name}.wav`)
+    setBusy(false)
+    run(result, `Exported ${name}.wav`)
+  }
+
   const zoom = (factor: number) => setPps(p => Math.min(2000, Math.max(5, p * factor)))
 
   return (
     <div className="app">
       <header className="toolbar">
-        <button onClick={addTrack}>+ Track</button>
-        <button onClick={() => fileInput.current?.click()}>Import</button>
-        <input ref={fileInput} type="file" accept=".wav,.mp3,audio/*" multiple hidden
-          onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
+        <button onClick={() => importInput.current?.click()}>Import</button>
+        <button onClick={() => void save()}>Save</button>
+        <button onClick={() => openInput.current?.click()}>Open</button>
+        <button onClick={() => void exportMix()} disabled={busy}>{busy ? 'Exporting…' : 'Export'}</button>
         <span className="divider" />
         <button onClick={() => { controller.play(); refresh() }} disabled={controller.isPlaying()}>Play</button>
         <button onClick={() => { controller.pause(); refresh() }}>Pause</button>
         <button onClick={() => { controller.stop(); refresh() }}>Stop</button>
         <span className="divider" />
+        <button onClick={addTrack}>+ Track</button>
         <button onClick={() => zoom(1 / 1.5)} title="Zoom out" aria-label="Zoom out">−</button>
         <span className="zoom-label">Zoom</span>
         <button onClick={() => zoom(1.5)} title="Zoom in" aria-label="Zoom in">+</button>
         <span className="time" aria-label="Cursor time">{formatTime(time, sr)}</span>
+
+        <input ref={importInput} type="file" accept=".wav,.mp3,audio/*" multiple hidden
+          onChange={e => { void importFiles(e.target.files); e.target.value = '' }} />
+        <input ref={openInput} type="file" accept=".json,application/json" hidden
+          onChange={e => { void open(e.target.files?.[0]); e.target.value = '' }} />
+        <input ref={relinkInput} type="file" accept=".wav,.mp3,audio/*" hidden
+          onChange={e => { void relink(e.target.files?.[0]); e.target.value = '' }} />
       </header>
 
+      {/* Missing files (ER3): say which, and offer to relink each one */}
+      {missing.length > 0 && (
+        <div className="missing-banner" role="alert">
+          <span>Missing audio:</span>
+          {missing.map(path => (
+            <span key={path} className="missing-item">
+              {path}
+              <button onClick={() => { relinkTarget.current = path; relinkInput.current?.click() }}>Relink…</button>
+            </span>
+          ))}
+        </div>
+      )}
+
       {project.tracks.length === 0 ? (
-        <p className="empty">No tracks yet. Click “+ Track” to start.</p>
+        <p className="empty">No tracks yet. Click “+ Track” to start, or “Open” a saved project.</p>
       ) : (
         <main className="editor">
           <div className="editor-body"

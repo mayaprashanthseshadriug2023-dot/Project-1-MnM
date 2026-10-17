@@ -229,3 +229,22 @@ describe('export (ER4)', () => {
     else throw new Error('should have failed')
   })
 })
+
+describe('relinking a missing file (ER3)', () => {
+  it('points the clips at the new file and clears the missing flag', async () => {
+    const { ctl, store } = setup()
+    const t = ctl.addTrack('Voice')
+    await ctl.importAudio('voice.wav', t.id)
+    await ctl.save('p.json')
+    store.delete('voice.wav')                     // the audio file has gone...
+    store.set('found.wav', 'audio')               // ...and the user finds a copy elsewhere
+
+    const loaded = await ctl.load('p.json')
+    if (!loaded.ok) throw new Error(loaded.error)
+    expect(loaded.value).toEqual(['voice.wav'])
+    expect((await ctl.relink('voice.wav', 'found.wav')).ok).toBe(true)
+    expect(ctl.project.tracks[0].clips[0].bufferId).toBe('found.wav')
+    expect(ctl.project.buffers.get('found.wav')!.missing).toBe(false)
+    expect(checkInvariants(ctl.project)).toEqual([])
+  })
+})
