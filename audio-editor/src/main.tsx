@@ -4,10 +4,10 @@ import { App } from './ui/App'
 import { createApp } from './setup'
 import './index.css'
 
-const { controller, fs } = createApp()
+const { controller, files } = createApp()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App controller={controller} registerFile={file => fs.addFile(file)} />
+    <App controller={controller} files={files} />
   </StrictMode>,
 )
