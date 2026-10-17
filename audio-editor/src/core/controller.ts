@@ -170,6 +170,14 @@ export class ProjectController {
     if (this.deps.playback.isPlaying()) this.play()          // restart from the new position
   }
 
+    /** Where the cursor is now: from the audio clock while playing (A2 Alg. 5), otherwise the saved cursor. */
+  position(): Samples {
+    return this.deps.playback.isPlaying() ? this.deps.playback.position() : this.project.cursor
+  }
+
+  isPlaying(): boolean {
+    return this.deps.playback.isPlaying()
+  }
   // ---------- Save, load, export (UC4, ER3, ER4) ----------
 
   async save(path: string): Promise<Result> {
