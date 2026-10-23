@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "app": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "samples": "tsx scripts/make-samples.ts"
+    "samples": "tsx scripts/make-samples.ts",
+    "dist:mac": "npm run build && electron-builder --mac --universal",
+    "dist:win": "npm run build && electron-builder --win --x64"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -26,6 +28,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^10.0.6",
     "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.10.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.6",
@@ -38,5 +41,28 @@
     "vitest": "^5.0.4",
     "wait-on": "^9.5.1"
   },
-  "main": "electron/main.cjs"
+  "main": "electron/main.cjs",
+  "description": "Multi-track audio editor (CS-3810, Team MnM)",
+  "author": "Team MnM",
+  "build": {
+    "appId": "edu.ashoka.mnm.audioeditor",
+    "productName": "Multi-Track Audio Editor",
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "target": "zip",
+      "category": "public.app-category.music",
+      "identity": "-"
+    },
+    "win": {
+      "target": "zip",
+      "signAndEditExecutable": false
+    }
+  }
 }

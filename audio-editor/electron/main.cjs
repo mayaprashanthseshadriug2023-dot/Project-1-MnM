@@ -26,7 +26,8 @@ function createWindow() {
     if (choice === 0) event.preventDefault()
   })
 
-  win.loadURL(process.env.APP_URL ?? 'http://localhost:5173')
+  if (app.isPackaged) win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))   // packaged app: built files
+  else win.loadURL(process.env.APP_URL ?? 'http://localhost:5173')                       // development: Vite server
 }
 
 // Wraps a file operation so the page always gets { ok, value } or { ok: false, error }, like our Result type
