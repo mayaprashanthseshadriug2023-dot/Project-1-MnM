@@ -119,3 +119,25 @@ describe('TrackHeader delete button (#29)', () => {
     expect(onDelete).toHaveBeenCalledTimes(1)
   })
 })
+describe('Timeline playhead dragging', () => {
+  it('dragging along the ruler moves the cursor continuously, then stops on release', () => {
+    const onSeek = vi.fn()
+    const onEdit = vi.fn()
+    const project = createProject(1000)              // 1000 samples per second at 100 px per second
+    project.tracks = [createTrack('T')]
+    const { container } = render(
+      <Timeline project={project} version={0} view={{ pps: 100, scrollX: 0, sampleRate: 1000 }} cursor={0}
+        selectedClip={null} onSelectClip={() => {}} onSelectTrack={() => {}} onSeek={onSeek}
+        onEdit={onEdit} canMove={() => true} />,
+    )
+    const canvas = container.querySelector('canvas')!
+    fireEvent.mouseDown(canvas, { clientX: 100, clientY: 10 })   // press on the ruler at 1 s
+    fireEvent.mouseMove(window, { clientX: 150, clientY: 10 })   // drag to 1.5 s
+    fireEvent.mouseMove(window, { clientX: 250, clientY: 300 })  // keeps following, even below the ruler
+    fireEvent.mouseUp(window, { clientX: 250, clientY: 300 })
+    expect(onSeek.mock.calls.map(call => call[0])).toEqual([1000, 1500, 2500])
+    expect(onEdit).not.toHaveBeenCalled()                        // scrubbing never edits clips
+    fireEvent.mouseMove(window, { clientX: 300, clientY: 10 })   // after letting go: nothing happens
+    expect(onSeek).toHaveBeenCalledTimes(3)
+  })
+})
