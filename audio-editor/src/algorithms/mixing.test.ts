@@ -19,9 +19,20 @@ describe('trackGains (mute/solo, FR4)', () => {
     expect(g.get(b.id)).toBe(0)
   })
 
-  it('solo overrides mute (A1 4.1.6)', () => {
+  it('mute wins over solo: a muted track stays silent even when soloed (#27)', () => {
     const a = createTrack('A'); a.solo = true; a.mute = true
-    expect(trackGains([a]).get(a.id)).toBe(1)
+    const b = createTrack('B')
+    const g = trackGains([a, b])
+    expect(g.get(a.id)).toBe(0)       // muted, so silent even though soloed
+    expect(g.get(b.id)).toBe(0)       // not soloed while another track is, so silent too
+  })
+
+  it('a soloed, unmuted track still plays alone', () => {
+    const a = createTrack('A'); a.solo = true
+    const b = createTrack('B')
+    const g = trackGains([a, b])
+    expect(g.get(a.id)).toBe(1)
+    expect(g.get(b.id)).toBe(0)
   })
 })
 

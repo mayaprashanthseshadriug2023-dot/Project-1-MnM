@@ -3,12 +3,12 @@
 import type { Clip, Project, Samples, Track } from '../model/types'
 import { clipEnd } from '../model/types'
 
-/** ApplyAudibility: soloed tracks if any track is soloed, otherwise all unmuted tracks. */
+/** ApplyAudibility: a muted track is always silent (#27); if any track is soloed, only soloed tracks play. */
 export function trackGains(tracks: Track[]): Map<string, number> {
   const anySolo = tracks.some(t => t.solo)
   const gains = new Map<string, number>()
   for (const t of tracks) {
-    const audible = anySolo ? t.solo : !t.mute
+      const audible = !t.mute && (!anySolo || t.solo)   // mute always wins; with any solo, only soloed tracks play (#27)
     gains.set(t.id, audible ? t.volume : 0)        // muted = gain 0, not removed (A2)
   }
   return gains
