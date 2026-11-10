@@ -17,7 +17,7 @@ Run in the desktop app (`npm run app` on the Mac). Fill in Result with Pass or F
 | 11 | Delete (FR3) | Select a clip, press Delete | Clip removed | | |
 | 12 | Fades (FR5) | Drag the yellow squares | Fade lines appear; fade is audible | | |
 | 13 | Volume (FR4) | Move a track's slider while playing | Volume changes immediately | | |
-| 14 | Mute/Solo (FR4) | Mute a track; solo a track; solo a muted track | Muted silent; only soloed play; solo overrides mute | | |
+| 14 | Mute/Solo (FR4) | Mute a track; solo a track; solo a muted track | Muted silent; only soloed play; mute wins over solo (#27) | | |
 | 15 | Playback | Play / Pause / Stop / Space | Behave as labelled; Stop returns to 0 | | |
 | 16 | Playback | Click the ruler, during and outside playback | Cursor jumps; playback continues from there | | |
 | 17 | Sync (A2 Alg. 5) | Same file on two tracks at the same start, play | Sounds louder, with no echo (tracks in sync) | | |

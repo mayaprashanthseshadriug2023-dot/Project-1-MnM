@@ -6,7 +6,7 @@ Run `npm run app` in `audio-editor/` before starting. Have the `samples/` folder
    relative paths. Point out the fade lines on the music clip and the Music track at volume 0.5.
 2. **Play** (Space). The red cursor moves; all tracks are in sync from one audio clock (Alg. 5).
    **Click the ruler** to jump. Click inside the music fade-in: it starts part-way up, not silent.
-3. **Mute / Solo** while playing (FR4). Solo Voice, then also mute it: solo overrides mute (A1 4.1.6).
+3. **Mute / Solo** while playing (FR4). Solo Voice, then also mute it: mute wins, so it goes silent (changed from A1 after issue #27).
 4. **Move** a clip along its track and onto another track (FR2). **Drag it over another clip**: the
    preview turns red, and on drop it returns with "Clip overlaps another clip" (ER2, A3 4.5).
 5. **Trim** an edge, then **fade** with the yellow squares (FR3, FR5). Status bar confirms each edit;
