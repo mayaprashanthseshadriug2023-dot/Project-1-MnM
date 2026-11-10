@@ -141,3 +141,27 @@ describe('Timeline playhead dragging', () => {
     expect(onSeek).toHaveBeenCalledTimes(3)
   })
 })
+
+import { ClipPanel } from './ClipPanel'
+
+describe('ClipPanel (fade controls)', () => {
+  it('typing a fade in seconds sets it on the clip', () => {
+    const clip = createClip('a.wav', 44100 * 4)                     // a 4 s clip
+    const setFades = vi.fn(() => ok(undefined))
+    const controller = {
+      project: { sampleRate: 44100 }, findClip: () => ({ clip }), setFades,
+      splitClipAt: vi.fn(), deleteClip: vi.fn(), position: () => 0,
+    } as unknown as ProjectController
+    render(<ClipPanel controller={controller} clipId={clip.id} onResult={() => {}} onClipGone={() => {}} />)
+    const box = screen.getByLabelText('Fade in (seconds)')
+    fireEvent.change(box, { target: { value: '1.5' } })
+    fireEvent.keyDown(box, { key: 'Enter' })
+    expect(setFades).toHaveBeenCalledWith(clip.id, 66150, 0)      // 1.5 s at 44.1 kHz
+  })
+
+  it('shows nothing when no clip is selected', () => {
+    const controller = { project: { sampleRate: 44100 }, findClip: () => undefined } as unknown as ProjectController
+    const { container } = render(<ClipPanel controller={controller} clipId={null} onResult={() => {}} onClipGone={() => {}} />)
+    expect(container.innerHTML).toBe('')
+  })
+})

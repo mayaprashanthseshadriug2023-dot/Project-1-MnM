@@ -3,6 +3,7 @@ import type { ProjectController } from '../core/controller'
 import type { Result } from '../model/types'
 import type { FilePicker } from '../system/file-picker'
 import { TrackHeader } from './TrackHeader'
+import { ClipPanel } from './ClipPanel'
 import { Timeline, type Edit } from './Timeline'
 import { formatTime } from './format'
 import { projectEnd } from './geometry'
@@ -236,6 +237,7 @@ export function App({ controller, files }: Props) {
         </main>
       )}
 
+      <ClipPanel controller={controller} clipId={selectedClip} onResult={(r, msg) => { run(r, msg); afterEdit() }} onClipGone={() => setSelectedClip(null)} />
       <footer className="status-bar">
         <span>{sr / 1000} kHz</span>
         <span role="status">{status}</span>

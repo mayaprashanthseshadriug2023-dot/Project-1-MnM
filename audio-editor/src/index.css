@@ -64,3 +64,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .missing-item { display: flex; gap: 6px; align-items: center; color: var(--text); }
 .missing-item button { padding: 2px 8px; }.track-header .delete-track { padding: 2px 6px; color: var(--muted); }
 .track-header .delete-track:hover { color: var(--danger); border-color: var(--danger); }
+.clip-panel {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 8px 12px;
+  background: var(--panel); border-top: 1px solid var(--line); font-size: 13px;
+}
+.clip-panel-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clip-panel label { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+.clip-panel input {
+  width: 70px; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 4px 6px; font: inherit;
+}
+.clip-panel-hint { color: var(--muted); flex: 1; }
