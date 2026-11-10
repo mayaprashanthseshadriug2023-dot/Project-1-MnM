@@ -7,12 +7,15 @@ interface Props {
   selected: boolean
   onSelect: () => void
   onChange: (settings: Settings) => void
+  onDelete: () => void
 }
 
-export function TrackHeader({ track, selected, onSelect, onChange }: Props) {
+export function TrackHeader({ track, selected, onSelect, onChange, onDelete }: Props) {
   return (
     <div className={`track-header${selected ? ' selected' : ''}`} onClick={onSelect}>
       <span className="track-name">{track.name}</span>
+      <button className="delete-track" title="Delete track" aria-label={`Delete ${track.name}`}
+        onClick={e => { e.stopPropagation(); onDelete() }}>✕</button>
       {/* Letters as well as colour, so state never relies on colour alone (A3 4.7) */}
       <button className={track.mute ? 'on' : ''} title="Mute" aria-pressed={track.mute}
         onClick={e => { e.stopPropagation(); onChange({ mute: !track.mute }) }}>M</button>

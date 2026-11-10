@@ -58,6 +58,21 @@ export class ProjectController {
     return track
   }
 
+    /** Remove a track and its clips; free audio that no other clip uses (#29). */
+  deleteTrack(trackId: string): Result {
+    const index = this.project.tracks.findIndex(t => t.id === trackId)
+    if (index === -1) return err('Track not found')
+    const [track] = this.project.tracks.splice(index, 1)
+    for (const c of track.clips) {
+      const buf = this.project.buffers.get(c.bufferId)
+      if (buf) {
+        buf.refCount--
+        if (buf.refCount === 0) this.project.buffers.delete(c.bufferId)
+      }
+    }
+    return this.done(ok(undefined))
+  }
+
   /** Volume, mute and solo (FR4). Applied at once if playback is running. */
   setTrack(trackId: string, settings: TrackSettings): Result {
     const track = this.findTrack(trackId)

@@ -248,3 +248,25 @@ describe('relinking a missing file (ER3)', () => {
     expect(checkInvariants(ctl.project)).toEqual([])
   })
 })
+
+describe('deleting tracks (#29)', () => {
+  it('removes the track and its clips, freeing audio no other track uses', async () => {
+    const { ctl } = setup()
+    const a = ctl.addTrack('A')
+    const b = ctl.addTrack('B')
+    await ctl.importAudio('voice.wav', a.id)
+    await ctl.importAudio('music.wav', a.id)
+    await ctl.importAudio('voice.wav', b.id)
+    expect(ctl.deleteTrack(a.id).ok).toBe(true)
+    expect(ctl.project.tracks.map(t => t.name)).toEqual(['B'])
+    expect(ctl.project.buffers.has('music.wav')).toBe(false)          // only track A used it
+    expect(ctl.project.buffers.get('voice.wav')!.refCount).toBe(1)   // still used on track B
+    expect(checkInvariants(ctl.project)).toEqual([])
+    expect(ctl.dirty).toBe(true)
+  })
+
+  it('rejects an unknown track', () => {
+    const { ctl } = setup()
+    expect(ctl.deleteTrack('nope').ok).toBe(false)
+  })
+})
