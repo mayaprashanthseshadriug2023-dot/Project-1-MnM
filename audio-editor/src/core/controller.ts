@@ -162,6 +162,11 @@ export class ProjectController {
 
   play(): void {
     if (this.project.cursor >= mixLength(this.project)) this.project.cursor = 0   // at the end: start again (#28)
+    this.start()
+  }
+
+  /** Starts the engine from the cursor. Used by play() and by seek(), which must not jump to the start. */
+  private start(): void {
     this.deps.playback.play(this.project, this.project.cursor)
     this.playing = true
   }
@@ -180,7 +185,7 @@ export class ProjectController {
 
   seek(position: Samples): void {
     this.project.cursor = Math.max(0, Math.round(position))
-    if (this.deps.playback.isPlaying()) this.play()          // restart from the new position
+    if (this.deps.playback.isPlaying()) this.start()          // restart from the new position
   }
 
   /** If playback reached the end by itself, leave the cursor exactly at the end (#28). */
