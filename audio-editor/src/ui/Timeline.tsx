@@ -33,6 +33,7 @@ export function Timeline(props: Props) {
   const wrap = useRef<HTMLDivElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const drag = useRef<Drag | null>(null)
+  const scrubbing = useRef(false)          // true while dragging the playhead along the ruler
   const [width, setWidth] = useState(0)
   const [preview, setPreview] = useState<Preview | null>(null)
   const height = RULER_H + project.tracks.length * ROW_H
@@ -115,7 +116,7 @@ export function Timeline(props: Props) {
   function onMouseDown(e: MouseEvent<HTMLCanvasElement>) {
     const { x, y } = pointer(e)
     const hit = hitTest(project, view, x, y)
-    if (hit.kind === 'ruler') { onSeek(samplesAt(x, view)); return }      // click on the ruler moves the cursor
+    if (hit.kind === 'ruler') { scrubbing.current = true; onSeek(samplesAt(x, view)); return }      // click on the ruler moves the cursor
     if (hit.kind === 'lane') { onSelectTrack(hit.row); onSelectClip(null); return }
     if (hit.kind !== 'clip') return
     onSelectTrack(hit.row)
@@ -129,19 +130,21 @@ export function Timeline(props: Props) {
     const { x, y } = pointer(e)
     const hit = hitTest(project, view, x, y)
     e.currentTarget.style.cursor =
-      hit.kind === 'ruler' ? 'pointer' : hit.kind !== 'clip' ? 'default' : hit.part === 'body' ? 'grab' : 'ew-resize'
+      hit.kind === 'ruler' ? 'ew-resize' : hit.kind !== 'clip' ? 'default' : hit.part === 'body' ? 'grab' : 'ew-resize'
   }
 
   // While dragging, follow the mouse anywhere on the page
   useEffect(() => {
     const isClick = (d: Drag, x: number, y: number) => Math.abs(x - d.startX) < CLICK && Math.abs(y - d.startY) < CLICK
     function move(e: globalThis.MouseEvent) {
+      if (scrubbing.current) { onSeek(samplesAt(pointer(e).x, view)); return }   // follow the mouse while scrubbing
       const d = drag.current
       if (!d) return
       const { x, y } = pointer(e)
       if (!isClick(d, x, y)) setPreview(editFor(d, x, y).preview)        // only the preview moves
     }
     function up(e: globalThis.MouseEvent) {
+      if (scrubbing.current) { scrubbing.current = false; return }               // let go: stop scrubbing
       const d = drag.current
       if (!d) return
       drag.current = null
