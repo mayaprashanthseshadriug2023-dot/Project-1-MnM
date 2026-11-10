@@ -5,6 +5,7 @@ import type { Clip, Project, Result, Samples, Track } from '../model/types'
 import { ok, err, clipEnd } from '../model/types'
 import { createClip, createProject, createTrack, WAVEFORM_WINDOW } from '../model/project'
 import { canPlace, placeClip, trimLeft, trimRight, splitClip, removeClip } from '../algorithms/timeline'
+import { mixLength } from '../algorithms/mixing'
 import { loadProject, saveProject } from '../system/storage'
 import { exportWav } from './export'
 
@@ -22,6 +23,7 @@ type TrackSettings = Partial<Pick<Track, 'volume' | 'mute' | 'solo'>>
 export class ProjectController {
   project: Project
   dirty = false                     // unsaved changes: the UI shows * in the title (A3 4.4)
+  private playing = false           // true between play() and pause()/stop(), to notice when playback ends by itself (#28)
   private deps: ControllerDeps
 
   constructor(deps: ControllerDeps, sampleRate = 44100) {
@@ -116,13 +118,14 @@ export class ProjectController {
     source.clips.splice(index, 1)                            // then leave the old one
     return this.done(placed)
   }
-    /** For the drag preview: would this move be accepted? Changes nothing. */
+
+  /** For the drag preview: would this move be accepted? Changes nothing. */
   canMove(clipId: string, toTrackId: string, start: Samples): boolean {
     const found = this.findClip(clipId)
     const target = this.findTrack(toTrackId)
     return !!found && !!target && canPlace(target, found.clip, start)
   }
-  
+
   trimClip(clipId: string, edge: 'left' | 'right', delta: Samples): Result {
     const found = this.findClip(clipId)
     if (!found) return err('Clip not found')
@@ -158,17 +161,21 @@ export class ProjectController {
   // ---------- Playback (A1 Flow 2) ----------
 
   play(): void {
+    if (this.project.cursor >= mixLength(this.project)) this.project.cursor = 0   // at the end: start again (#28)
     this.deps.playback.play(this.project, this.project.cursor)
+    this.playing = true
   }
 
   pause(): void {
     this.project.cursor = this.deps.playback.position()      // cursor freezes where it stopped
     this.deps.playback.pause()
+    this.playing = false
   }
 
   stop(): void {
     this.deps.playback.stop()
     this.project.cursor = 0
+    this.playing = false
   }
 
   seek(position: Samples): void {
@@ -176,14 +183,25 @@ export class ProjectController {
     if (this.deps.playback.isPlaying()) this.play()          // restart from the new position
   }
 
-    /** Where the cursor is now: from the audio clock while playing (A2 Alg. 5), otherwise the saved cursor. */
+  /** If playback reached the end by itself, leave the cursor exactly at the end (#28). */
+  private syncEnded(): void {
+    if (this.playing && !this.deps.playback.isPlaying()) {
+      this.playing = false
+      this.project.cursor = Math.min(this.deps.playback.position(), mixLength(this.project))
+    }
+  }
+
+  /** Where the cursor is now: from the audio clock while playing (A2 Alg. 5), otherwise the saved cursor. */
   position(): Samples {
+    this.syncEnded()
     return this.deps.playback.isPlaying() ? this.deps.playback.position() : this.project.cursor
   }
 
   isPlaying(): boolean {
+    this.syncEnded()
     return this.deps.playback.isPlaying()
   }
+
   // ---------- Save, load, export (UC4, ER3, ER4) ----------
 
   async save(path: string): Promise<Result> {
@@ -192,7 +210,7 @@ export class ProjectController {
     return result
   }
 
-    /** Relink a missing audio file (ER3): its clips now play from `newPath`. */
+  /** Relink a missing audio file (ER3): its clips now play from `newPath`. */
   async relink(missingPath: string, newPath: string): Promise<Result> {
     const old = this.project.buffers.get(missingPath)
     if (!old?.missing) return err('That file is not missing')
@@ -216,12 +234,13 @@ export class ProjectController {
     this.dirty = true
     return ok(undefined)
   }
-  
+
   /** Returns the list of missing audio files, so the UI can offer to relink them. */
   async load(path: string): Promise<Result<string[]>> {
     const result = await loadProject(path, this.deps.fs, this.deps.io, this.deps.waveform)
     if (!result.ok) return result                            // current project is untouched
     this.deps.playback.stop()
+    this.playing = false
     this.project = result.value.project
     this.dirty = false
     return ok(result.value.missing)
