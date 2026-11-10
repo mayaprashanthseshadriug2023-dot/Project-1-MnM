@@ -20,7 +20,7 @@ afterEach(cleanup)        // remove each test's page before the next test
 describe('TrackHeader', () => {
   it('sends mute, solo and volume changes', () => {
     const onChange = vi.fn()
-    render(<TrackHeader track={createTrack('Voice')} selected={false} onSelect={() => {}} onChange={onChange} />)
+    render(<TrackHeader track={createTrack('Voice')} selected={false} onSelect={() => {}} onChange={onChange} onDelete={() => {}} />)
     fireEvent.click(screen.getByTitle('Mute'))
     expect(onChange).toHaveBeenCalledWith({ mute: true })
     fireEvent.click(screen.getByTitle('Solo'))
@@ -108,5 +108,14 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Import'))
     expect(await screen.findByText(/Imported voice\.wav/)).toBeTruthy()
     expect(document.title.startsWith('*')).toBe(true)
+  })
+})
+
+describe('TrackHeader delete button (#29)', () => {
+  it('asks to delete the track', () => {
+    const onDelete = vi.fn()
+    render(<TrackHeader track={createTrack('Voice')} selected={false} onSelect={() => {}} onChange={() => {}} onDelete={onDelete} />)
+    fireEvent.click(screen.getByLabelText('Delete Voice'))
+    expect(onDelete).toHaveBeenCalledTimes(1)
   })
 })

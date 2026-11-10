@@ -107,6 +107,17 @@ export function App({ controller, files }: Props) {
     refresh()
   }
 
+    function deleteTrack(trackId: string) {
+    const track = controller.findTrack(trackId)
+    if (!track) return
+    if (track.clips.length > 0 &&
+        !window.confirm(`Delete "${track.name}" and its ${track.clips.length} clip(s)?`)) return
+    run(controller.deleteTrack(trackId), `Deleted ${track.name}`)
+    if (selectedTrack === trackId) setSelectedTrack(null)
+    if (selectedClip && !controller.findClip(selectedClip)) setSelectedClip(null)
+    afterEdit()                                       // if playing, continue without that track
+  }
+  
   async function importFiles() {
     const trackId = selectedTrack ?? project.tracks[0]?.id
     if (!trackId) { setStatus('Add a track first'); return }
@@ -209,7 +220,7 @@ export function App({ controller, files }: Props) {
               {project.tracks.map(track => (
                 <TrackHeader key={track.id} track={track} selected={track.id === selectedTrack}
                   onSelect={() => setSelectedTrack(track.id)}
-                  onChange={settings => run(controller.setTrack(track.id, settings))} />
+                  onChange={settings => run(controller.setTrack(track.id, settings))} onDelete={() => deleteTrack(track.id)} />
               ))}
             </div>
             <Timeline project={project} version={version} view={view} cursor={time}
