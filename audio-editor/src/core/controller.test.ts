@@ -268,5 +268,25 @@ describe('deleting tracks (#29)', () => {
   it('rejects an unknown track', () => {
     const { ctl } = setup()
     expect(ctl.deleteTrack('nope').ok).toBe(false)
+describe('end of playback (#28)', () => {
+  it('leaves the cursor at the end when playback finishes by itself', async () => {
+    const { ctl, playback } = setup()
+    const t = ctl.addTrack('A')
+    await ctl.importAudio('voice.wav', t.id)          // 1000 samples long
+    ctl.seek(700)                                     // press Play from part-way through
+    ctl.play()
+    playback.playing = false                          // the engine reached the end and stopped itself
+    playback.position = 1010                          // its last check ran slightly past the end
+    expect(ctl.isPlaying()).toBe(false)
+    expect(ctl.position()).toBe(1000)                 // at the end, not back at 700
+  })
+
+  it('pressing Play at the end starts again from the beginning', async () => {
+    const { ctl, playback } = setup()
+    const t = ctl.addTrack('A')
+    await ctl.importAudio('voice.wav', t.id)
+    ctl.seek(1000)
+    ctl.play()
+    expect(playback.calls[playback.calls.length - 1]).toBe('play 0')
   })
 })
